@@ -1,0 +1,10 @@
+This script will save pictures of characters that are availble on  world-flags.org, along with character descriptions that will be saved in JSON format.
+
+It makes use of:
+- requests, to retrieve pages and images
+- BeatifulSoup (bs4), to parse HTML
+- pathlib and shutil, to save files and images
+- json, to save JSON
+- unicodedata, to normalize unicode text.
+
+As of 2020-11-13, this script worked correctly.
