@@ -4,6 +4,8 @@ import shutil
 import pathlib
 import json
 import unicodedata
+from multiprocessing import Pool
+import functools
 
 LINK='https://world-flags.org/'
 BASEDIR='output'
@@ -109,14 +111,13 @@ def scrap(link, start, end):
     i = (start or 0) + 1
     total_count = len(character_links)
     print('Found', total_count, 'characters')
-    print('Donwloading characters', f'{i}-{end or (total_count + 1) - 1}')
+    parse = functools.partial(parse_character, basedir=BASEDIR, with_pics=True, with_json=True)
     
-    for link in character_links:
-        print(f'Character {i}/{total_count}')
-        parse_character(link,basedir=BASEDIR,with_pics=True,with_json=True)
-        i += 1
+    with Pool(8) as p:
+        p.map(parse, character_links)
 
-try:
-    scrap(LINK, FROM, TO)
-except KeyboardInterrupt:
-    print('Exiting...')
+if __name__ == "__main__":
+    try:
+        scrap(LINK, FROM, TO)
+    except KeyboardInterrupt:
+        print('Exiting...')
