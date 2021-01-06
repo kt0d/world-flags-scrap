@@ -6,5 +6,6 @@ It makes use of:
 - pathlib and shutil, to save files and images
 - json, to save JSON
 - unicodedata, to normalize unicode text.
+- multiprocessing and functools, to download and parse pages in parallel
 
-As of 2020-11-13, this script worked correctly.
+As of 2021-01-06, this script downloaded 79 characters data with 172 pictures. 

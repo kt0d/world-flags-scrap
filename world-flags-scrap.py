@@ -12,11 +12,11 @@ LINK='https://world-flags.org/'
 BASEDIR='output'
 FROM, TO = None, None
 
-def save_image(link, path):
-    print('Downloading image:\t', link)
+def save_image(link, path, log=print):
+    log('Downloading image:\t', link)
     r = requests.get(link, stream=True)
     if r.status_code != 200:
-        print('Failed to download image')
+        log('Failed to download image')
         return
     with path.open(mode='wb') as f:
         r.raw.decode_content = True
@@ -26,11 +26,11 @@ def save_json(data, path):
     with path.open(mode='w') as f:
         json.dump(data, f, ensure_ascii=False, indent=0)
 
-def get_soup(link):
-    print('Downloading page:\t', link)
+def get_soup(link, log=print):
+    log('Downloading page:\t', link)
     p = requests.get(link)
     if p.status_code != 200:
-        print('Failed to download page')
+        log('Failed to download page')
         return
     return BeautifulSoup(p.text, 'lxml')
 
@@ -38,17 +38,19 @@ def string_array(strs):
     stripped = ''.join(strs).lstrip().rstrip()
     return unicodedata.normalize('NFKD', stripped).replace('\r', '').split('\n')
 
-def get_pics(content, dirpath, prefix):
+def get_pics(content, dirpath, prefix, log=print):
     front_img = content.find('div', class_='front').img['src']
     back_img = content.find('div', class_='back').img['src']
     threeview = content.find_all('div', class_='ch_support_item_con')[2].img
     if threeview is not None:
-        save_image(threeview['src'], dirpath.joinpath(f'{prefix}3view.png'))
+        save_image(threeview['src'], dirpath.joinpath(f'{prefix}3view.png'), log)
 
-    save_image(front_img, dirpath.joinpath(f'{prefix}front.png'))
-    save_image(back_img, dirpath.joinpath(f'{prefix}back.png'))
+    save_image(front_img, dirpath.joinpath(f'{prefix}front.png'), log)
+    save_image(back_img, dirpath.joinpath(f'{prefix}back.png'), log)
 
-def parse_character(link, basedir, with_pics, with_json,structured=False):
+def parse_character(number, link, basedir, with_pics, with_json, structured=True, skip_existing=True):
+    logprint = lambda *s : print(f'[{number}]'.ljust(4), *s)
+
     country = link.split('/')[-1].split('.')[0]
     region = link.split('/')[-2]
 
@@ -60,11 +62,16 @@ def parse_character(link, basedir, with_pics, with_json,structured=False):
         prefix = country + '_'
     dirpath.mkdir(parents=True, exist_ok=True)
 
-    s = get_soup(link)
+    jsonpath = dirpath.joinpath(country).with_suffix('.json')
+    if skip_existing and jsonpath.exists():
+        logprint(f'Skipping because file exists: {jsonpath}')
+        return
+
+    s = get_soup(link, logprint)
     content = s.find('div', class_='p_content')
     
     if with_pics:
-        get_pics(content, dirpath, prefix)
+        get_pics(content, dirpath, prefix, logprint)
 
     if not with_json:
         return
@@ -101,7 +108,7 @@ def parse_character(link, basedir, with_pics, with_json,structured=False):
     tag_link = s.find('a', class_='pagi_item_back')['href']
     info['tag'] = tag_link.rpartition('/')[2].partition(';')[0]
 
-    save_json(info, dirpath.joinpath(country).with_suffix('.json'))
+    save_json(info, jsonpath)
 
 def scrap(link, start, end):
     soup = get_soup(link)
@@ -115,7 +122,7 @@ def scrap(link, start, end):
     parse = functools.partial(parse_character, basedir=BASEDIR, with_pics=True, with_json=True)
     
     with Pool(8) as p:
-        p.map(parse, character_links)
+        p.starmap(parse, zip(range(1,total_count+1),character_links))
 
 if __name__ == "__main__":
     try:
